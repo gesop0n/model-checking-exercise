@@ -1,0 +1,93 @@
+MODULE main
+
+--  A 
+-- Farmer                     B
+-- Sheep
+-- Wolf
+-- Cabbage     ship
+
+
+
+VAR
+ Farmer  : {bankA, bankB, AtoB, BtoA};
+ Sheep   : {bankA, bankB, AtoB, BtoA};
+ Wolf    : {bankA, bankB, AtoB, BtoA};
+ Cabbage : {bankA, bankB, AtoB, BtoA};
+ Ship    : {bankA, bankB, AtoB, BtoA};
+
+DEFINE
+  otherwise :=TRUE;
+
+ASSIGN
+  init(Farmer)  := bankA;
+  init(Sheep)   := bankA;
+  init(Wolf)    := bankA;
+  init(Cabbage) := bankA;
+  init(Ship)    := bankA;
+
+  next(Ship) := case
+                 Ship = bankA : AtoB;
+                 Ship = AtoB  : bankB;
+                 Ship = bankB : BtoA;
+                 Ship = BtoA  : bankA;
+                esac;
+
+
+  next(Farmer)  := case
+                  Ship = bankA & Farmer = bankA : {AtoB, bankA};
+                  Farmer = AtoB                 : bankB;
+                  Ship = bankB & Farmer = bankB : {BtoA, bankB};
+                  Farmer = BtoA                 : bankA;
+		  otherwise                     : Farmer;
+		 esac;
+
+  next(Sheep)  := case
+                  Ship = bankA & Sheep = bankA : {AtoB, bankA};
+                  Sheep = AtoB                 : bankB;
+                  Ship = bankB & Sheep = bankB : {BtoA, bankB};
+                  Sheep = BtoA                 : bankA;
+		  otherwise                    : Sheep;
+		 esac;
+
+  next(Wolf)  := case
+                  Ship = bankA & Wolf = bankA : {AtoB, bankA};
+                  Wolf = AtoB                 : bankB;
+                  Ship = bankB & Wolf = bankB : {BtoA, bankB};
+                  Wolf = BtoA                 : bankA;
+		  otherwise                   : Wolf;
+		 esac;
+
+
+  next(Cabbage)  := case
+                  Ship = bankA & Cabbage = bankA : {AtoB, bankA};
+                  Cabbage = AtoB                 : bankB;
+                  Ship = bankB & Cabbage = bankB : {BtoA, bankB};
+                  Cabbage = BtoA                 : bankA;
+		  otherwise                      : Cabbage;
+		 esac;
+
+
+--
+DEFINE
+  goal := Farmer = bankB & Wolf = bankB & Sheep = bankB & Cabbage = bankB;
+
+  watch1 := (Wolf = Sheep) -> (Farmer = Wolf);  
+  watch2 := (Cabbage = Sheep) -> (Farmer = Sheep);  
+
+  crew1 := (Ship = AtoB) -> (Farmer = AtoB);
+  crew2 := (Ship = BtoA) -> (Farmer = BtoA);
+          -- If the ship is in the river, the farmer has to be on it.  
+
+  crew3 := (Ship = AtoB) -> !( ((Wolf  = AtoB) & (Sheep   = AtoB)) |
+                               ((Wolf  = AtoB) & (Cabbage = AtoB)) |
+                               ((Sheep = AtoB) & (Cabbage = AtoB)) );
+
+  crew4 := (Ship = BtoA) -> !( ((Wolf  = BtoA) & (Sheep   = BtoA)) |
+                               ((Wolf  = BtoA) & (Cabbage = BtoA)) |
+                               ((Sheep = BtoA) & (Cabbage = BtoA)) );
+          -- At most two figures on the ship.
+ 
+  rule   := watch1 & watch2 & crew1 & crew2 & crew3 & crew4 ;
+
+--
+LTLSPEC !(rule U goal)

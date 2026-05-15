@@ -1,0 +1,66 @@
+MODULE main
+VAR
+  tmr1: 1..5;
+  tmr2: 1..4;
+  tmr3: 1..6;
+  tmr4: 1..3;
+
+  sw1: {on, off};
+  sw2: {on, off};
+  sw3: {on, off};
+  sw4: {on, off};
+
+ASSIGN
+  init(tmr1) := 2;
+  init(tmr2) := 3;
+  init(tmr3) := 1;
+  init(tmr4) := 2;
+
+  init(sw1) := off;
+  init(sw2) := off;
+  init(sw3) := off;
+  init(sw4) := off;
+
+  next(tmr1) := case 
+      tmr1<5 : tmr1+1 ;
+      TRUE : 1;
+             esac;
+
+  next(tmr2) := case 
+      tmr2<4 : tmr2+1 ;
+      TRUE : 1;
+             esac;
+
+  next(tmr3) := case 
+      tmr3<6 : tmr3+1 ;
+      TRUE : 1;
+             esac;
+
+  next(tmr4) := case 
+      tmr4<3 : tmr4+1 ;
+      TRUE : 1;
+             esac;
+
+  next(sw1) := case 
+      tmr1=5 : on ;
+      TRUE : off;
+             esac;
+
+  next(sw2) := case 
+      tmr2=4 : on ;
+      TRUE : off;
+             esac;
+
+  next(sw3) := case 
+      tmr3=6 : on ;
+       TRUE : off;
+             esac;
+
+  next(sw4) := case 
+      tmr4=3 : on ;
+      TRUE : off;
+             esac;
+
+
+LTLSPEC F(sw1=on & sw2=on &(sw3=on | sw4=on))
+
