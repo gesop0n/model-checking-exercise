@@ -1,0 +1,154 @@
+-- =====================================================================
+--  歩行者ボタン式スクランブル交差点  (NuSMV)
+-- =====================================================================
+--  タイマーは離散モデル(1秒ごとのカウンタ)。
+--  NuSMV の1ステップ = 1秒。
+--
+--  通常時の信号サイクル(自動車のみ):
+--    南北(NS): 青30 → 黄2 → 右折のみ5 → 黄2 → 赤
+--    東西(EW): 青20 → 黄2 → 右折のみ5 → 黄2 → 赤
+--    NS → EW → NS … と繰り返す
+--
+--  歩行者ボタン押下時:
+--    NS が赤になるタイミング(NS黄2の直後)で EW も赤を継続し、
+--    歩行者: 青20 → 黄5 のスクランブルフェーズを挿入してから EW 青に戻る。
+--
+--  ボタンの制約:
+--    歩行者の青・黄の間はボタンを押しても無効。
+-- =====================================================================
+
+MODULE main
+
+VAR
+  -- 信号フェーズ(コントローラの状態)
+  phase : { nsGreen, nsYellow1, nsRight, nsYellow2,
+            pedGreen, pedYellow,
+            ewGreen, ewYellow1, ewRight, ewYellow2 };
+
+  -- 各フェーズの経過秒(1秒カウンタ)。最大は NS青の30秒。
+  t   : 1..30;
+
+  -- 歩行者ボタンの押下要求(ラッチ。次のスクランブル挿入点まで保持)
+  req : boolean;
+
+  -- 適切な歩行者の振る舞いモデル:
+  --   away    : 横断したい歩行者がいない
+  --   waiting : 横断待ち(=ボタンを押し続ける)
+  --   walking : スクランブル青で横断中
+  ped : { away, waiting, walking };
+
+DEFINE
+  -- ---- 各フェーズの長さ(秒) ----------------------------------------
+  dur := case
+    phase = nsGreen   : 30;
+    phase = nsYellow1 :  2;
+    phase = nsRight   :  5;
+    phase = nsYellow2 :  2;
+    phase = pedGreen  : 20;
+    phase = pedYellow :  5;
+    phase = ewGreen   : 20;
+    phase = ewYellow1 :  2;
+    phase = ewRight   :  5;
+    phase = ewYellow2 :  2;
+  esac;
+
+  -- フェーズ満了(このステップでフェーズが切り替わる)
+  phase_end := (t = dur);
+
+  -- 横断待ちの歩行者はボタンを押す
+  press := (ped = waiting);
+
+  -- 歩行者の青・黄の間はボタンを押しても無効
+  valid := !(phase = pedGreen | phase = pedYellow);
+
+  -- NS赤のタイミング(NS黄2満了)で要求があればスクランブルへ → 要求を消費
+  consume := (phase = nsYellow2 & phase_end & req);
+
+  -- ---- 各方向が青かどうか(検査式で使用) ----------------------------
+  NS_green  := phase = nsGreen;   -- 南北 自動車 青
+  EW_green  := phase = ewGreen;   -- 東西 自動車 青
+  PED_green := phase = pedGreen;  -- 歩行者(スクランブル) 青
+
+ASSIGN
+  -- ---- 初期状態 ----------------------------------------------------
+  init(phase) := nsGreen;
+  init(t)     := 1;
+  init(req)   := FALSE;
+  init(ped)   := away;
+
+  -- ---- タイマー(1秒カウンタ) --------------------------------------
+  next(t) := case
+    t < dur : t + 1;     -- まだ満了していなければ+1秒
+    TRUE    : 1;         -- フェーズ満了 → 1秒目に戻す
+  esac;
+
+  -- ---- 信号フェーズ遷移 --------------------------------------------
+  next(phase) := case
+    !phase_end              : phase;        -- 満了するまで現フェーズを保持
+
+    phase = nsGreen         : nsYellow1;
+    phase = nsYellow1       : nsRight;
+    phase = nsRight         : nsYellow2;
+
+    -- NS赤の時点で分岐:押されていれば歩行者スクランブルを挿入
+    phase = nsYellow2 & req : pedGreen;
+    phase = nsYellow2       : ewGreen;
+
+    phase = pedGreen        : pedYellow;
+    phase = pedYellow       : ewGreen;       -- スクランブル後は東西が青に戻る
+
+    phase = ewGreen         : ewYellow1;
+    phase = ewYellow1       : ewRight;
+    phase = ewRight         : ewYellow2;
+    phase = ewYellow2       : nsGreen;       -- サイクルの先頭(南北青)へ
+  esac;
+
+  -- ---- ボタン要求のラッチ ------------------------------------------
+  next(req) := case
+    consume       : FALSE;   -- スクランブル開始で要求を消費
+    press & valid : TRUE;    -- 有効なボタン押下で要求をラッチ
+    TRUE          : req;     -- それ以外は保持
+  esac;
+
+  -- ---- 歩行者の振る舞い --------------------------------------------
+  next(ped) := case
+    ped = away                       : { away, waiting };  -- 歩行者が現れて横断待ちになりうる
+    ped = waiting & phase = pedGreen : walking;            -- スクランブル青で渡り始める
+    ped = waiting                    : waiting;            -- それまでは待ち続ける(押し続ける)
+    ped = walking & phase = pedGreen : walking;            -- 青の間は横断中
+    ped = walking                    : away;               -- 黄/終了で渡り終える
+  esac;
+
+-- =====================================================================
+--  検査項目
+-- =====================================================================
+
+-- ---- 安全性(Safety) -------------------------------------------------
+-- (S1) 自動車:南北と東西が同時に青にならない
+LTLSPEC G !(NS_green & EW_green);
+
+-- (S2) スクランブル安全性:自動車が青の間は歩行者は青にならない
+LTLSPEC G !((NS_green | EW_green) & PED_green);
+
+-- (S3) いかなる2方向も同時に青にならない(まとめ / CTL)
+CTLSPEC AG !( (NS_green & EW_green)
+            | (NS_green & PED_green)
+            | (EW_green & PED_green) );
+
+-- ---- 活性(Liveness) -------------------------------------------------
+-- (L1) ボタンを押せば(要求が立てば)いつか歩行者が青になる
+LTLSPEC G (req -> F PED_green);
+
+-- (L2) 歩行者が横断待ちになれば、いつか青になって渡れる
+LTLSPEC G (press -> F PED_green);
+
+-- (L3) 自動車も飢餓しない:南北・東西は繰り返し青になる
+LTLSPEC G F NS_green;
+LTLSPEC G F EW_green;
+
+-- ---- 到達可能性 / 因果性 -------------------------------------------
+-- (R1) 歩行者青は到達可能(モデルが空でないことの確認。反例=到達経路)
+CTLSPEC EF PED_green;
+
+-- (R2) 歩行者青になるのはボタンが押された後だけ(因果性。過去演算子 O=once)
+LTLSPEC G (PED_green -> O press);
