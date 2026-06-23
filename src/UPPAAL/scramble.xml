@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+<declaration>
+// ====== 信号サイクル(秒) ======
+const int NS_G  = 30;   // 南北 青
+const int EW_G  = 20;   // 東西 青
+const int Y     = 2;    // 黄
+const int R     = 5;    // 右折のみ
+const int PED_G = 20;   // 歩行者 青
+const int PED_Y = 5;    // 歩行者 黄
+
+const int PRESS_PERIOD = 1; // 歩行者がボタンを押す周期(Zeno回避用)
+
+// ====== 共有変数 ======
+bool req       = false; // ラッチされた歩行者要求 (NuSMV の req)
+bool everPress  = false; // モニタ:有効なボタン押下が過去に1回でもあったか(因果性検査用)
+
+// ====== チャネル ======
+broadcast chan press;   // ボタン押下 (歩行者 -> コントローラ)
+broadcast chan goWalk;  // 歩行者青の開始 (コントローラ -> 歩行者)
+broadcast chan endWalk; // 歩行者青の終了 (コントローラ -> 歩行者)
+</declaration>
+
+<template>
+<name x="0" y="-40">Controller</name>
+<declaration>clock x;</declaration>
+
+<location id="id0" x="0" y="0">
+  <name x="-30" y="-34">nsGreen</name>
+  <label kind="invariant" x="-30" y="16">x &lt;= NS_G</label>
+</location>
+<location id="id1" x="160" y="0">
+  <name x="130" y="-34">nsYellow1</name>
+  <label kind="invariant" x="130" y="16">x &lt;= Y</label>
+</location>
+<location id="id2" x="320" y="0">
+  <name x="290" y="-34">nsRight</name>
+  <label kind="invariant" x="290" y="16">x &lt;= R</label>
+</location>
+<location id="id3" x="480" y="0">
+  <name x="450" y="-34">nsYellow2</name>
+  <label kind="invariant" x="450" y="16">x &lt;= Y</label>
+</location>
+<location id="id4" x="650" y="-130">
+  <name x="620" y="-164">pedGreen</name>
+  <label kind="invariant" x="620" y="-114">x &lt;= PED_G</label>
+</location>
+<location id="id5" x="820" y="-130">
+  <name x="790" y="-164">pedYellow</name>
+  <label kind="invariant" x="790" y="-114">x &lt;= PED_Y</label>
+</location>
+<location id="id6" x="650" y="130">
+  <name x="620" y="96">ewGreen</name>
+  <label kind="invariant" x="620" y="146">x &lt;= EW_G</label>
+</location>
+<location id="id7" x="480" y="260">
+  <name x="450" y="276">ewYellow1</name>
+  <label kind="invariant" x="450" y="226">x &lt;= Y</label>
+</location>
+<location id="id8" x="320" y="260">
+  <name x="290" y="276">ewRight</name>
+  <label kind="invariant" x="290" y="226">x &lt;= R</label>
+</location>
+<location id="id9" x="160" y="260">
+  <name x="130" y="276">ewYellow2</name>
+  <label kind="invariant" x="130" y="226">x &lt;= Y</label>
+</location>
+
+<init ref="id0"/>
+
+<!-- 通常サイクル NS -->
+<transition>
+  <source ref="id0"/><target ref="id1"/>
+  <label kind="guard" x="40" y="-20">x &gt;= NS_G</label>
+  <label kind="assignment" x="40" y="-4">x = 0</label>
+</transition>
+<transition>
+  <source ref="id1"/><target ref="id2"/>
+  <label kind="guard" x="200" y="-20">x &gt;= Y</label>
+  <label kind="assignment" x="200" y="-4">x = 0</label>
+</transition>
+<transition>
+  <source ref="id2"/><target ref="id3"/>
+  <label kind="guard" x="360" y="-20">x &gt;= R</label>
+  <label kind="assignment" x="360" y="-4">x = 0</label>
+</transition>
+
+<!-- nsYellow2 で分岐 -->
+<transition>
+  <source ref="id3"/><target ref="id4"/>
+  <label kind="guard" x="520" y="-90">x &gt;= Y &amp;&amp; req</label>
+  <label kind="synchronisation" x="520" y="-74">goWalk!</label>
+  <label kind="assignment" x="520" y="-58">x = 0, req = false</label>
+</transition>
+<transition>
+  <source ref="id3"/><target ref="id6"/>
+  <label kind="guard" x="520" y="40">x &gt;= Y &amp;&amp; !req</label>
+  <label kind="assignment" x="520" y="56">x = 0</label>
+</transition>
+
+<!-- 歩行者フェーズ -->
+<transition>
+  <source ref="id4"/><target ref="id5"/>
+  <label kind="guard" x="700" y="-150">x &gt;= PED_G</label>
+  <label kind="synchronisation" x="700" y="-134">endWalk!</label>
+  <label kind="assignment" x="700" y="-118">x = 0</label>
+</transition>
+<transition>
+  <source ref="id5"/><target ref="id6"/>
+  <label kind="guard" x="760" y="0">x &gt;= PED_Y</label>
+  <label kind="assignment" x="760" y="16">x = 0</label>
+</transition>
+
+<!-- 通常サイクル EW -->
+<transition>
+  <source ref="id6"/><target ref="id7"/>
+  <label kind="guard" x="560" y="200">x &gt;= EW_G</label>
+  <label kind="assignment" x="560" y="216">x = 0</label>
+</transition>
+<transition>
+  <source ref="id7"/><target ref="id8"/>
+  <label kind="guard" x="360" y="240">x &gt;= Y</label>
+  <label kind="assignment" x="360" y="256">x = 0</label>
+</transition>
+<transition>
+  <source ref="id8"/><target ref="id9"/>
+  <label kind="guard" x="200" y="240">x &gt;= R</label>
+  <label kind="assignment" x="200" y="256">x = 0</label>
+</transition>
+<transition>
+  <source ref="id9"/><target ref="id0"/>
+  <label kind="guard" x="40" y="160">x &gt;= Y</label>
+  <label kind="assignment" x="40" y="176">x = 0</label>
+  <nail x="-90" y="260"/>
+  <nail x="-90" y="0"/>
+</transition>
+
+<!-- ボタン押下の受信 (有効フェーズのみ。pedGreen/pedYellow には無い=無効) -->
+<transition>
+  <source ref="id0"/><target ref="id0"/>
+  <label kind="synchronisation" x="-30" y="-70">press?</label>
+  <label kind="assignment" x="-30" y="-54">req = true, everPress = true</label>
+  <nail x="-40" y="-50"/><nail x="40" y="-50"/>
+</transition>
+<transition>
+  <source ref="id1"/><target ref="id1"/>
+  <label kind="synchronisation" x="130" y="-70">press?</label>
+  <label kind="assignment" x="130" y="-54">req = true, everPress = true</label>
+  <nail x="120" y="-50"/><nail x="200" y="-50"/>
+</transition>
+<transition>
+  <source ref="id2"/><target ref="id2"/>
+  <label kind="synchronisation" x="290" y="-70">press?</label>
+  <label kind="assignment" x="290" y="-54">req = true, everPress = true</label>
+  <nail x="280" y="-50"/><nail x="360" y="-50"/>
+</transition>
+<transition>
+  <source ref="id3"/><target ref="id3"/>
+  <label kind="synchronisation" x="450" y="-70">press?</label>
+  <label kind="assignment" x="450" y="-54">req = true, everPress = true</label>
+  <nail x="440" y="-50"/><nail x="520" y="-50"/>
+</transition>
+<transition>
+  <source ref="id6"/><target ref="id6"/>
+  <label kind="synchronisation" x="700" y="110">press?</label>
+  <label kind="assignment" x="700" y="126">req = true, everPress = true</label>
+  <nail x="710" y="100"/><nail x="710" y="160"/>
+</transition>
+<transition>
+  <source ref="id7"/><target ref="id7"/>
+  <label kind="synchronisation" x="450" y="290">press?</label>
+  <label kind="assignment" x="450" y="306">req = true, everPress = true</label>
+  <nail x="440" y="310"/><nail x="520" y="310"/>
+</transition>
+<transition>
+  <source ref="id8"/><target ref="id8"/>
+  <label kind="synchronisation" x="290" y="290">press?</label>
+  <label kind="assignment" x="290" y="306">req = true, everPress = true</label>
+  <nail x="280" y="310"/><nail x="360" y="310"/>
+</transition>
+<transition>
+  <source ref="id9"/><target ref="id9"/>
+  <label kind="synchronisation" x="130" y="290">press?</label>
+  <label kind="assignment" x="130" y="306">req = true, everPress = true</label>
+  <nail x="120" y="310"/><nail x="200" y="310"/>
+</transition>
+</template>
+
+<template>
+<name x="0" y="-40">Pedestrian</name>
+<declaration>clock py;</declaration>
+
+<location id="p0" x="0" y="0">
+  <name x="-30" y="-34">idle</name>
+</location>
+<location id="p1" x="220" y="0">
+  <name x="190" y="-34">waiting</name>
+  <label kind="invariant" x="190" y="16">py &lt;= PRESS_PERIOD</label>
+</location>
+<location id="p2" x="220" y="160">
+  <name x="190" y="176">walking</name>
+</location>
+
+<init ref="p0"/>
+
+<!-- 歩行者が現れて横断待ちになる(非決定的) -->
+<transition>
+  <source ref="p0"/><target ref="p1"/>
+  <label kind="assignment" x="60" y="-20">py = 0</label>
+</transition>
+
+<!-- 待っている間は周期的にボタンを押す -->
+<transition>
+  <source ref="p1"/><target ref="p1"/>
+  <label kind="guard" x="280" y="-30">py &gt;= PRESS_PERIOD</label>
+  <label kind="synchronisation" x="280" y="-14">press!</label>
+  <label kind="assignment" x="280" y="2">py = 0</label>
+  <nail x="300" y="-40"/><nail x="300" y="40"/>
+</transition>
+
+<!-- 歩行者青で渡り始める -->
+<transition>
+  <source ref="p1"/><target ref="p2"/>
+  <label kind="synchronisation" x="230" y="70">goWalk?</label>
+</transition>
+
+<!-- 渡り終える -->
+<transition>
+  <source ref="p2"/><target ref="p0"/>
+  <label kind="synchronisation" x="60" y="120">endWalk?</label>
+  <nail x="0" y="160"/>
+</transition>
+</template>
+
+<system>
+system Controller, Pedestrian;
+</system>
+
+<queries>
+  <query><formula>A[] not (Controller.nsGreen and Controller.ewGreen)</formula><comment>S1: 自動車 NS と EW が同時に青にならない</comment></query>
+  <query><formula>A[] not ((Controller.nsGreen or Controller.ewGreen) and Controller.pedGreen)</formula><comment>S2: 自動車青の間は歩行者は青にならない</comment></query>
+  <query><formula>A[] not ((Controller.nsGreen and Controller.ewGreen) or (Controller.nsGreen and Controller.pedGreen) or (Controller.ewGreen and Controller.pedGreen))</formula><comment>S3: いかなる2方向も同時に青にならない</comment></query>
+  <query><formula>req --&gt; Controller.pedGreen</formula><comment>L1: 要求が立てばいつか歩行者青</comment></query>
+  <query><formula>Pedestrian.waiting --&gt; Controller.pedGreen</formula><comment>L2: 横断待ちになればいつか渡れる</comment></query>
+  <query><formula>Controller.nsGreen --&gt; Controller.ewGreen</formula><comment>L3a: NS青 -> いつか EW青(東西が飢餓しない)</comment></query>
+  <query><formula>Controller.ewGreen --&gt; Controller.nsGreen</formula><comment>L3b: EW青 -> いつか NS青(南北が飢餓しない)</comment></query>
+  <query><formula>E&lt;&gt; Controller.pedGreen</formula><comment>R1: 歩行者青は到達可能</comment></query>
+  <query><formula>A[] (Controller.pedGreen imply everPress)</formula><comment>R2: 歩行者青になるのはボタンが押された後だけ(因果性)</comment></query>
+  <query><formula>A[] not deadlock</formula><comment>デッドロック無し</comment></query>
+</queries>
+</nta>
