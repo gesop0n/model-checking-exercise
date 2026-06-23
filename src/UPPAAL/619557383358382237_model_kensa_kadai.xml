@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>const int NS_GREEN = 0;
+const int NS_YELLOW1 = 1;
+const int NS_ARROW = 2;
+const int NS_YELLOW2 = 3;
+const int PED_GREEN = 4;
+const int PED_YELLOW = 5;
+const int EW_GREEN = 6;
+const int EW_YELLOW1 = 7;
+const int EW_ARROW = 8;
+const int EW_YELLOW2 = 9;
+
+int phase = NS_GREEN;
+bool button = false;</declaration>
+	<template>
+		<name x="5" y="5">Controller</name>
+		<declaration>// Place local declarations here.
+clock c;  //time keisoku
+</declaration>
+		<location id="id0" x="-272" y="-127">
+			<name x="-306" y="-161">NS_GREEN</name>
+			<label kind="invariant" x="-297" y="-110">c &lt;= 30</label>
+		</location>
+		<location id="id1" x="-102" y="-127">
+			<name x="-136" y="-161">NS_YELLOW1</name>
+			<label kind="invariant" x="-127" y="-110">c &lt;= 2</label>
+		</location>
+		<location id="id2" x="61" y="-127">
+			<name x="34" y="-161">NS_ARROW</name>
+			<label kind="invariant" x="34" y="-110">c &lt;= 5</label>
+		</location>
+		<location id="id3" x="170" y="-127">
+			<name x="160" y="-161">NS_YELLOW2</name>
+			<label kind="invariant" x="160" y="-110">c &lt;= 2</label>
+		</location>
+		<location id="id4" x="289" y="-127">
+			<name x="279" y="-161">PED_GREEN</name>
+			<label kind="invariant" x="279" y="-110">c &lt;= 20</label>
+		</location>
+		<location id="id5" x="289" y="-8">
+			<name x="279" y="-42">PED_YELLOW</name>
+			<label kind="invariant" x="279" y="9">c &lt;= 5</label>
+		</location>
+		<location id="id6" x="178" y="-8">
+			<name x="168" y="-42">EW_GREEN</name>
+			<label kind="invariant" x="168" y="9">c &lt;= 20</label>
+		</location>
+		<location id="id7" x="68" y="-8">
+			<name x="58" y="-42">EW_YELLOW1</name>
+			<label kind="invariant" x="58" y="9">c &lt;= 2</label>
+		</location>
+		<location id="id8" x="-102" y="-8">
+			<name x="-112" y="-42">EW_ARROW</name>
+			<label kind="invariant" x="-112" y="9">c &lt;= 5</label>
+		</location>
+		<location id="id9" x="-246" y="-8">
+			<name x="-256" y="-42">EW_YELLOW2</name>
+			<label kind="invariant" x="-256" y="9">c &lt;= 2</label>
+		</location>
+		<init ref="id0"/>
+		<transition id="id10">
+			<source ref="id9"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-314" y="-110">c == 2</label>
+			<label kind="assignment" x="-314" y="-76">c = 0, phase = NS_GREEN</label>
+		</transition>
+		<transition id="id11">
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="154" y="-55">c == 5</label>
+			<label kind="assignment" x="154" y="-21">c = 0, phase = EW_YELLOW2</label>
+		</transition>
+		<transition id="id12">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="69" y="-51">c == 2</label>
+			<label kind="assignment" x="69" y="-17">c = 0, phase = EW_ARROW</label>
+		</transition>
+		<transition id="id13">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-58" y="-51">c == 20</label>
+			<label kind="assignment" x="-58" y="-17">c = 0, phase = EW_YELLOW1</label>
+		</transition>
+		<transition id="id14">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-152" y="-55">c == 5</label>
+			<label kind="assignment" x="-152" y="-21">c = 0, phase = EW_GREEN</label>
+		</transition>
+		<transition id="id15">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-152" y="-110">c == 20</label>
+			<label kind="assignment" x="-152" y="-76">c = 0, phase = PED_YELLOW</label>
+		</transition>
+		<transition id="id16">
+			<source ref="id3"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-58" y="-102">c == 2 &amp;&amp; button == false</label>
+			<label kind="assignment" x="-58" y="-68">c = 0, phase = EW_GREEN</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="188" y="-157">c == 2 &amp;&amp; button == true</label>
+			<label kind="assignment" x="188" y="-123">c = 0, button = false, phase = PED_GREEN</label>
+		</transition>
+		<transition id="id18">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="94" y="-153">c == 5</label>
+			<label kind="assignment" x="94" y="-119">c = 0, phase = NS_YELLOW2</label>
+		</transition>
+		<transition id="id19">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-42" y="-153">c == 2</label>
+			<label kind="assignment" x="-34" y="-119">c = 0, phase = NS_ARROW</label>
+		</transition>
+		<transition id="id20">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-212" y="-153">c == 30</label>
+			<label kind="assignment" x="-212" y="-119">c = 0, phase = NS_YELLOW1</label>
+		</transition>
+	</template>
+	<template>
+		<name>Pedestrian</name>
+		<location id="id21" x="0" y="0">
+			<name x="-10" y="-34">IDLE</name>
+		</location>
+		<init ref="id21"/>
+		<transition id="id22">
+			<source ref="id21"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-25" y="-93">!button &amp;&amp; phase != PED_GREEN &amp;&amp; phase != PED_YELLOW</label>
+			<label kind="assignment" x="-25" y="-59">button = true</label>
+			<nail x="-51" y="-119"/>
+		</transition>
+	</template>
+	<system>con = Controller();
+ped = Pedestrian();
+
+system con, ped;</system>
+	<queries>
+		<query>
+			<formula>A[] not (con.NS_GREEN &amp;&amp; con.EW_GREEN)</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2026-06-10 11:40:03 +0900">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not ((con.NS_GREEN || con.EW_GREEN) &amp;&amp; con.PED_GREEN)</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2026-06-10 11:40:00 +0900">
+			</result>
+		</query>
+		<query>
+			<formula>button --&gt; con.PED_GREEN</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2026-06-10 11:55:32 +0900">
+			</result>
+		</query>
+	</queries>
+</nta>
